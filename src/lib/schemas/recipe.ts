@@ -1,9 +1,15 @@
 import { z } from 'zod'
 
+// Helper to validate positive number string
+const positiveNumberString = z.string().optional().refine(
+  (val) => !val || (!isNaN(Number(val)) && Number(val) >= 0),
+  { message: 'Debe ser un numero positivo' }
+)
+
 // Zod schema for recipe form validation
 export const ingredientSchema = z.object({
   name: z.string().min(2, 'Minimo 2 caracteres').max(100, 'Maximo 100 caracteres'),
-  quantity: z.string().optional(),
+  quantity: positiveNumberString,
   unit: z.string().optional(),
   customUnit: z.string().optional(),
 })
@@ -16,8 +22,8 @@ export const recipeSchema = z.object({
   title: z.string().min(3, 'Minimo 3 caracteres').max(100, 'Maximo 100 caracteres'),
   description: z.string().max(500, 'Maximo 500 caracteres').optional().or(z.literal('')),
   imageUrl: z.string().url('URL no valida').optional().or(z.literal('')),
-  prepTime: z.string().optional(),
-  cookingTime: z.string().optional(),
+  prepTime: positiveNumberString,
+  cookingTime: positiveNumberString,
   servings: z.coerce.number().min(1, 'Minimo 1 porcion').max(50, 'Maximo 50 porciones'),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
   ingredients: z.array(ingredientSchema).min(1, 'Agrega al menos un ingrediente'),

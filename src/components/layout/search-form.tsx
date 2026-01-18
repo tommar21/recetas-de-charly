@@ -32,6 +32,7 @@ export function SearchForm({ className, onSubmit }: SearchFormProps) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
+          maxLength={100}
         />
       </div>
     </form>

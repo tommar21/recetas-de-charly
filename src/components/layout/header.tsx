@@ -12,6 +12,16 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Plus,
   Bookmark,
   User,
@@ -33,6 +43,7 @@ interface HeaderProps {
 
 export function Header({ initialUser }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const [user, setUser] = useState<AuthUser | null>(initialUser)
   const router = useRouter()
   const supabase = createClient()
@@ -69,7 +80,7 @@ export function Header({ initialUser }: HeaderProps) {
     }
   }, [supabase])
 
-  const handleLogout = async () => {
+  const confirmLogout = async () => {
     if (!supabase) return
     const { error } = await supabase.auth.signOut()
     if (error) {
@@ -79,10 +90,12 @@ export function Header({ initialUser }: HeaderProps) {
       router.push('/')
       router.refresh()
     }
+    setShowLogoutDialog(false)
+    setMobileMenuOpen(false)
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="container mx-auto max-w-7xl flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
@@ -105,7 +118,7 @@ export function Header({ initialUser }: HeaderProps) {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="rounded-full" aria-label="Menu de usuario">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user.avatar_url} alt={user.display_name || user.email} />
                       <AvatarFallback>
@@ -134,7 +147,7 @@ export function Header({ initialUser }: HeaderProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem onClick={() => setShowLogoutDialog(true)}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Cerrar Sesion
                   </DropdownMenuItem>
@@ -156,7 +169,7 @@ export function Header({ initialUser }: HeaderProps) {
         {/* Mobile Menu */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Abrir menu">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
@@ -217,7 +230,7 @@ export function Header({ initialUser }: HeaderProps) {
                       Mi Perfil
                     </Link>
                     <button
-                      onClick={handleLogout}
+                      onClick={() => setShowLogoutDialog(true)}
                       className="flex items-center gap-2 p-2 rounded-md hover:bg-accent text-left w-full"
                     >
                       <LogOut className="h-5 w-5" />
@@ -247,6 +260,23 @@ export function Header({ initialUser }: HeaderProps) {
           </SheetContent>
         </Sheet>
       </div>
+
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cerrar sesion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estas seguro de que deseas cerrar sesion?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLogout}>
+              Cerrar sesion
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   )
 }

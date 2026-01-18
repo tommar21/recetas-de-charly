@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -49,39 +50,38 @@ export default function MyRecipesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    async function loadRecipes() {
-      if (!supabase) {
-        setLoading(false)
-        return
-      }
-
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        toast.error('Debes iniciar sesion para ver tus recetas')
-        router.push('/login')
-        return
-      }
-
-      const { data: recipesData, error } = await supabase
-        .from('recipes')
-        .select('id, title, slug, description, image_url, cooking_time, servings, difficulty, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        toast.error('Error al cargar tus recetas')
-      } else {
-        setRecipes(recipesData || [])
-      }
-
+  const loadRecipes = useCallback(async () => {
+    if (!supabase) {
       setLoading(false)
+      return
     }
 
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      toast.error('Debes iniciar sesion para ver tus recetas')
+      router.push('/login')
+      return
+    }
+
+    const { data: recipesData, error } = await supabase
+      .from('recipes')
+      .select('id, title, slug, description, image_url, cooking_time, servings, difficulty, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      toast.error('Error al cargar tus recetas')
+    } else {
+      setRecipes(recipesData || [])
+    }
+
+    setLoading(false)
+  }, [supabase, router])
+
+  useEffect(() => {
     loadRecipes()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadRecipes])
 
   const handleDelete = async () => {
     if (!supabase || !deleteId) return
@@ -150,13 +150,14 @@ export default function MyRecipesPage() {
               <Card key={recipe.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="relative">
                   <Link href={`/recipes/${recipe.id}`}>
-                    <div className="aspect-4/3 overflow-hidden">
+                    <div className="relative aspect-4/3 overflow-hidden">
                       {recipe.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={recipe.image_url}
                           alt={recipe.title}
-                          className="object-cover w-full h-full transition-transform group-hover:scale-105"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover transition-transform group-hover:scale-105"
                         />
                       ) : (
                         <div className="w-full h-full bg-muted flex items-center justify-center">
@@ -179,7 +180,8 @@ export default function MyRecipesPage() {
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm"
+                        className="absolute top-2 right-2 h-8 w-8 opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm"
+                        aria-label="Opciones de receta"
                       >
                         <MoreVertical className="h-4 w-4" />
                       </Button>

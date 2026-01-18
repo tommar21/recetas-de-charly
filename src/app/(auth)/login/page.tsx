@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { ChefHat, Mail, Lock, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { translateError } from '@/lib/utils/translate-error'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -36,15 +37,15 @@ export default function LoginPage() {
       })
 
       if (error) {
-        toast.error(error.message)
+        toast.error(translateError(error))
         return
       }
 
       toast.success('Bienvenido de vuelta!')
       router.push(redirectTo)
       router.refresh()
-    } catch {
-      toast.error('Error al iniciar sesion')
+    } catch (err) {
+      toast.error(translateError(err))
     } finally {
       setLoading(false)
     }
@@ -63,7 +64,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      toast.error(error.message)
+      toast.error(translateError(error))
     }
   }
 

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Bookmark } from 'lucide-react'
+import { Bookmark, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -22,30 +22,47 @@ export function BookmarkButton({
 }: BookmarkButtonProps) {
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked)
   const [isLoading, setIsLoading] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const supabase = createClient()
+  const isMounted = useRef(true)
 
   useEffect(() => {
-    async function checkBookmarkStatus() {
-      if (!supabase) return
+    isMounted.current = true
+    return () => { isMounted.current = false }
+  }, [])
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      setUserId(user.id)
-
-      const { data } = await supabase
-        .from('bookmarks')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('recipe_id', recipeId)
-        .maybeSingle()
-
-      setIsBookmarked(!!data)
+  const checkBookmarkStatus = useCallback(async () => {
+    if (!supabase) {
+      setIsChecking(false)
+      return
     }
 
-    checkBookmarkStatus()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!isMounted.current) return
+
+    if (!user) {
+      setIsChecking(false)
+      return
+    }
+
+    setUserId(user.id)
+
+    const { data } = await supabase
+      .from('bookmarks')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('recipe_id', recipeId)
+      .maybeSingle()
+
+    if (!isMounted.current) return
+    setIsBookmarked(!!data)
+    setIsChecking(false)
   }, [supabase, recipeId])
+
+  useEffect(() => {
+    checkBookmarkStatus()
+  }, [checkBookmarkStatus])
 
   const handleToggleBookmark = async () => {
     if (!supabase) {
@@ -77,7 +94,7 @@ export function BookmarkButton({
           .eq('recipe_id', recipeId)
 
         if (error) throw error
-        toast.success('Receta eliminada de guardados')
+        if (isMounted.current) toast.success('Receta eliminada de guardados')
       } else {
         // Add bookmark
         const { error } = await supabase
@@ -88,14 +105,16 @@ export function BookmarkButton({
           })
 
         if (error) throw error
-        toast.success('Receta guardada')
+        if (isMounted.current) toast.success('Receta guardada')
       }
     } catch {
       // Revert optimistic update on error
-      setIsBookmarked(previousState)
-      toast.error('Error al actualizar guardados')
+      if (isMounted.current) {
+        setIsBookmarked(previousState)
+        toast.error('Error al actualizar guardados')
+      }
     } finally {
-      setIsLoading(false)
+      if (isMounted.current) setIsLoading(false)
     }
   }
 
@@ -105,7 +124,7 @@ export function BookmarkButton({
         variant="ghost"
         size="icon"
         onClick={handleToggleBookmark}
-        disabled={isLoading}
+        disabled={isLoading || isChecking}
         className={cn(
           'transition-colors',
           isBookmarked && 'text-primary',
@@ -113,9 +132,13 @@ export function BookmarkButton({
         )}
         title={isBookmarked ? 'Quitar de guardados' : 'Guardar receta'}
       >
-        <Bookmark
-          className={cn('h-5 w-5', isBookmarked && 'fill-current')}
-        />
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <Bookmark
+            className={cn('h-5 w-5', isBookmarked && 'fill-current')}
+          />
+        )}
       </Button>
     )
   }
@@ -124,12 +147,16 @@ export function BookmarkButton({
     <Button
       variant={isBookmarked ? 'default' : 'outline'}
       onClick={handleToggleBookmark}
-      disabled={isLoading}
+      disabled={isLoading || isChecking}
       className={className}
     >
-      <Bookmark
-        className={cn('h-4 w-4 mr-2', isBookmarked && 'fill-current')}
-      />
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      ) : (
+        <Bookmark
+          className={cn('h-4 w-4 mr-2', isBookmarked && 'fill-current')}
+        />
+      )}
       {isBookmarked ? 'Guardada' : 'Guardar'}
     </Button>
   )

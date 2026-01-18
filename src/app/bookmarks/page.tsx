@@ -4,13 +4,22 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Clock, Users, Bookmark, Trash2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Bookmark, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { DIFFICULTY_COLORS, DIFFICULTY_LABELS, type Difficulty } from '@/lib/constants'
+import { RecipeCard } from '@/components/recipes/recipe-card'
 
 interface BookmarkedRecipe {
   id: string
@@ -31,6 +40,7 @@ export default function BookmarksPage() {
   const supabase = createClient()
   const [bookmarks, setBookmarks] = useState<BookmarkedRecipe[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleteBookmarkId, setDeleteBookmarkId] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadBookmarks() {
@@ -77,20 +87,21 @@ export default function BookmarksPage() {
     loadBookmarks()
   }, [supabase, router])
 
-  const removeBookmark = async (bookmarkId: string) => {
-    if (!supabase) return
+  const confirmRemoveBookmark = async () => {
+    if (!supabase || !deleteBookmarkId) return
 
     const { error } = await supabase
       .from('bookmarks')
       .delete()
-      .eq('id', bookmarkId)
+      .eq('id', deleteBookmarkId)
 
     if (error) {
       toast.error('Error al eliminar el guardado')
     } else {
-      setBookmarks(bookmarks.filter((b) => b.id !== bookmarkId))
+      setBookmarks(bookmarks.filter((b) => b.id !== deleteBookmarkId))
       toast.success('Receta eliminada de guardados')
     }
+    setDeleteBookmarkId(null)
   }
 
   if (loading) {
@@ -103,7 +114,7 @@ export default function BookmarksPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="overflow-hidden">
-              <Skeleton className="aspect-[4/3]" />
+              <Skeleton className="aspect-4/3" />
               <CardContent className="p-4 space-y-2">
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-4 w-full" />
@@ -130,75 +141,23 @@ export default function BookmarksPage() {
 
       {bookmarks.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {bookmarks.map((bookmark) => {
-            const recipe = bookmark.recipe
-            const difficulty = recipe.difficulty as Difficulty | null
-
-            return (
-              <Card key={bookmark.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="relative">
-                  <Link href={`/recipes/${recipe.id}`}>
-                    <div className="aspect-[4/3] overflow-hidden">
-                      {recipe.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={recipe.image_url}
-                          alt={recipe.title}
-                          className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <span className="text-4xl">🍽️</span>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                  {difficulty && (
-                    <Badge
-                      className={`absolute top-2 left-2 ${DIFFICULTY_COLORS[difficulty]}`}
-                      variant="secondary"
-                    >
-                      {DIFFICULTY_LABELS[difficulty]}
-                    </Badge>
-                  )}
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeBookmark(bookmark.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CardContent className="p-4">
-                  <Link href={`/recipes/${recipe.id}`}>
-                    <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                      {recipe.title}
-                    </h3>
-                  </Link>
-                  {recipe.description && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {recipe.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                    {recipe.cooking_time && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{recipe.cooking_time} min</span>
-                      </div>
-                    )}
-                    {recipe.servings && (
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{recipe.servings}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+          {bookmarks.map((bookmark) => (
+            <RecipeCard
+              key={bookmark.id}
+              recipe={bookmark.recipe}
+              actions={
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity"
+                  onClick={() => setDeleteBookmarkId(bookmark.id)}
+                  aria-label="Eliminar de guardados"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              }
+            />
+          ))}
         </div>
       ) : (
         <div className="text-center py-12">
@@ -212,6 +171,23 @@ export default function BookmarksPage() {
           </Button>
         </div>
       )}
+
+      <AlertDialog open={!!deleteBookmarkId} onOpenChange={(open) => !open && setDeleteBookmarkId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar de guardados</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta receta sera eliminada de tus guardados. Puedes volver a guardarla cuando quieras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveBookmark}>
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

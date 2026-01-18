@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 
 async function getCategories() {
@@ -71,9 +72,12 @@ export default async function CategoriesPage() {
         <div className="text-center py-12">
           <p className="text-4xl mb-4">📂</p>
           <h3 className="text-xl font-semibold mb-2">No hay categorias</h3>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             Las categorias apareceran aqui pronto
           </p>
+          <Button asChild>
+            <Link href="/recipes">Ver todas las recetas</Link>
+          </Button>
         </div>
       )}
     </div>

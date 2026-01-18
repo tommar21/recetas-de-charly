@@ -6,7 +6,7 @@ export type Difficulty = 'easy' | 'medium' | 'hard'
 
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   easy: 'bg-green-100 text-green-800',
-  medium: 'bg-yellow-100 text-yellow-800',
+  medium: 'bg-amber-100 text-amber-900',
   hard: 'bg-red-100 text-red-800',
 }
 

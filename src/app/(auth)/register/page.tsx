@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { ChefHat, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { translateError } from '@/lib/utils/translate-error'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
@@ -56,15 +57,15 @@ export default function RegisterPage() {
       })
 
       if (error) {
-        toast.error(error.message)
+        toast.error(translateError(error))
         return
       }
 
       toast.success('Cuenta creada! Revisa tu email para confirmar.')
       const loginUrl = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login'
       router.push(loginUrl)
-    } catch {
-      toast.error('Error al crear la cuenta')
+    } catch (err) {
+      toast.error(translateError(err))
     } finally {
       setLoading(false)
     }
@@ -83,7 +84,7 @@ export default function RegisterPage() {
     })
 
     if (error) {
-      toast.error(error.message)
+      toast.error(translateError(error))
     }
   }
 

@@ -29,7 +29,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Separator } from '@/components/ui/separator'
-import { ChefHat, Pencil, Bookmark, Heart, Calendar, Loader2, User } from 'lucide-react'
+import { ChefHat, Pencil, Bookmark, Heart, Calendar, Loader2, User, Lock, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { ImageUpload } from '@/components/ui/image-upload'
@@ -74,6 +74,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -185,6 +189,43 @@ export default function ProfilePage() {
 
     setSaving(false)
   }, [supabase, profile, router])
+
+  const handleChangePassword = useCallback(async () => {
+    if (!supabase) return
+
+    // Validate
+    if (newPassword.length < 6) {
+      toast.error('La contrasena debe tener al menos 6 caracteres')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contrasenas no coinciden')
+      return
+    }
+
+    setChangingPassword(true)
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+
+    if (error) {
+      if (error.message.includes('same_password')) {
+        toast.error('La nueva contrasena debe ser diferente a la actual')
+      } else if (error.message.includes('weak_password')) {
+        toast.error('La contrasena es demasiado debil')
+      } else {
+        toast.error('Error al cambiar la contrasena')
+      }
+    } else {
+      toast.success('Contrasena actualizada correctamente')
+      setNewPassword('')
+      setConfirmPassword('')
+    }
+
+    setChangingPassword(false)
+  }, [supabase, newPassword, confirmPassword])
 
   if (loading) {
     return (
@@ -460,6 +501,67 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Change Password Section */}
+      <Card className="mt-6">
+        <CardContent className="p-6 sm:p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Lock className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">Cambiar Contrasena</h2>
+          </div>
+
+          <div className="space-y-4 max-w-md">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nueva contrasena</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimo 6 caracteres"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Confirmar contrasena</label>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repite la contrasena"
+              />
+            </div>
+
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !newPassword || !confirmPassword}
+              className="mt-2"
+            >
+              {changingPassword ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cambiando...
+                </>
+              ) : (
+                'Cambiar Contrasena'
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

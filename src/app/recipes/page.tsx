@@ -1,28 +1,38 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Users, Plus, ChefHat } from 'lucide-react'
+import { Plus, ChefHat } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import type { Recipe, Category } from '@/lib/types'
-import { DIFFICULTY_COLORS, DIFFICULTY_LABELS, type Difficulty } from '@/lib/constants'
+import { RecipeCard } from '@/components/recipes/recipe-card'
+import { Pagination } from '@/components/ui/pagination'
+
+const RECIPES_PER_PAGE = 12
 
 interface RecipeWithAuthor extends Recipe {
   profiles: { display_name: string | null } | null
 }
 
-async function getRecipes(categorySlug?: string): Promise<RecipeWithAuthor[]> {
+interface PaginatedResult {
+  recipes: RecipeWithAuthor[]
+  totalCount: number
+  totalPages: number
+  currentPage: number
+}
+
+async function getRecipes(categorySlug?: string, page = 1): Promise<PaginatedResult> {
   const supabase = await createClient()
-  if (!supabase) return []
+  const emptyResult: PaginatedResult = { recipes: [], totalCount: 0, totalPages: 0, currentPage: page }
+  if (!supabase) return emptyResult
 
-  let query = supabase
-    .from('recipes')
-    .select('*, profiles:user_id(display_name)')
-    .eq('is_public', true)
-    .order('created_at', { ascending: false })
+  // Ensure page is valid
+  const currentPage = Math.max(1, page)
+  const from = (currentPage - 1) * RECIPES_PER_PAGE
+  const to = from + RECIPES_PER_PAGE - 1
 
+  // Get recipe IDs for category filter if needed
+  let categoryRecipeIds: string[] | null = null
   if (categorySlug) {
-    // Get category ID first
     const { data: category } = await supabase
       .from('categories')
       .select('id')
@@ -36,20 +46,39 @@ async function getRecipes(categorySlug?: string): Promise<RecipeWithAuthor[]> {
         .eq('category_id', category.id)
 
       if (recipeIds && recipeIds.length > 0) {
-        query = query.in('id', recipeIds.map(r => r.recipe_id))
+        categoryRecipeIds = recipeIds.map(r => r.recipe_id)
       } else {
-        return []
+        return emptyResult
       }
     }
   }
 
-  const { data, error } = await query
+  // Build query with count
+  let query = supabase
+    .from('recipes')
+    .select('*, profiles:user_id(display_name)', { count: 'exact' })
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
 
-  if (error) {
-    return []
+  if (categoryRecipeIds) {
+    query = query.in('id', categoryRecipeIds)
   }
 
-  return (data || []) as RecipeWithAuthor[]
+  const { data, error, count } = await query.range(from, to)
+
+  if (error) {
+    return emptyResult
+  }
+
+  const totalCount = count || 0
+  const totalPages = Math.ceil(totalCount / RECIPES_PER_PAGE)
+
+  return {
+    recipes: (data || []) as RecipeWithAuthor[],
+    totalCount,
+    totalPages,
+    currentPage
+  }
 }
 
 async function getCategories(): Promise<Category[]> {
@@ -67,15 +96,18 @@ async function getCategories(): Promise<Category[]> {
 export default async function RecipesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>
+  searchParams: Promise<{ category?: string; page?: string }>
 }) {
   const params = await searchParams
   const categorySlug = params.category
+  const page = Math.max(1, parseInt(params.page || '1') || 1)
 
-  const [recipes, categories] = await Promise.all([
-    getRecipes(categorySlug),
+  const [result, categories] = await Promise.all([
+    getRecipes(categorySlug, page),
     getCategories()
   ])
+
+  const { recipes, totalCount, totalPages, currentPage } = result
 
   const currentCategory = categorySlug
     ? categories.find(c => c.slug === categorySlug)
@@ -141,63 +173,26 @@ export default async function RecipesPage({
           </Button>
         </div>
       ) : (
+        <>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recipes.map((recipe) => (
-            <Link key={recipe.id} href={`/recipes/${recipe.id}`}>
-              <Card className="group overflow-hidden hover:shadow-lg transition-shadow h-full">
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                  {recipe.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={recipe.image_url}
-                      alt={recipe.title}
-                      className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <ChefHat className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  )}
-                  {recipe.difficulty && (
-                    <Badge
-                      className={`absolute top-2 right-2 ${DIFFICULTY_COLORS[recipe.difficulty as Difficulty]}`}
-                      variant="secondary"
-                    >
-                      {DIFFICULTY_LABELS[recipe.difficulty as Difficulty]}
-                    </Badge>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                    {recipe.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                    {recipe.description || 'Sin descripcion'}
-                  </p>
-                  <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                    {recipe.cooking_time && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{recipe.cooking_time} min</span>
-                      </div>
-                    )}
-                    {recipe.servings && (
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{recipe.servings}</span>
-                      </div>
-                    )}
-                  </div>
-                  {recipe.profiles?.display_name && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      por {recipe.profiles.display_name}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              useIconPlaceholder
+            />
           ))}
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          basePath="/recipes"
+          preserveParams={categorySlug ? { category: categorySlug } : {}}
+          itemName="receta"
+        />
+        </>
       )}
     </div>
   )

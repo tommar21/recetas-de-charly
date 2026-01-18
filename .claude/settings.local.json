@@ -43,7 +43,8 @@
       "mcp__github__create_or_update_file",
       "Bash(gh workflow run:*)",
       "mcp__github__get_file_contents",
-      "Bash(ls -la \"c:\\\\Users\\\\tomim\\\\OneDrive\\\\Documentos\\\\programming\\\\personal\\\\recetas-de-charly\\\\.github\\\\workflows\"\" 2>/dev/null || echo \"Directory not found \")"
+      "Bash(ls -la \"c:\\\\Users\\\\tomim\\\\OneDrive\\\\Documentos\\\\programming\\\\personal\\\\recetas-de-charly\\\\.github\\\\workflows\"\" 2>/dev/null || echo \"Directory not found \")",
+      "mcp__supabase__list_migrations"
     ]
   }
 }

@@ -6,12 +6,11 @@ import {
   ChefHat,
   Search,
   Bookmark,
-  Clock,
-  Users,
   Sparkles,
   ArrowRight
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { RecipeCard } from '@/components/recipes/recipe-card'
 import type { Category, Recipe } from '@/lib/types'
 
 async function getCategories(): Promise<Category[]> {
@@ -52,9 +51,12 @@ async function getCategoryCounts(): Promise<Record<string, number>> {
   const supabase = await createClient()
   if (!supabase) return {}
 
+  // Join with recipes to only count public recipes
+  // Note: For better performance at scale, create a DB function with GROUP BY
   const { data, error } = await supabase
     .from('recipe_categories')
-    .select('category_id')
+    .select('category_id, recipes!inner(is_public)')
+    .eq('recipes.is_public', true)
 
   if (error) return {}
 
@@ -76,7 +78,7 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-orange-950 dark:via-amber-950 dark:to-yellow-950">
+      <section className="relative bg-linear-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-orange-950 dark:via-amber-950 dark:to-yellow-950">
         <div className="container mx-auto max-w-7xl px-4 py-20 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
             <Badge variant="secondary" className="mb-4">
@@ -221,64 +223,7 @@ export default async function HomePage() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredRecipes.map((recipe) => (
-                <Link key={recipe.id} href={`/recipes/${recipe.id}`}>
-                  <Card className="group overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                      {recipe.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={recipe.image_url}
-                          alt={recipe.title}
-                          className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <ChefHat className="h-12 w-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      {recipe.difficulty && (
-                        <Badge
-                          className={`absolute top-2 right-2 ${
-                            recipe.difficulty === 'easy'
-                              ? 'bg-green-100 text-green-800'
-                              : recipe.difficulty === 'medium'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                          variant="secondary"
-                        >
-                          {recipe.difficulty === 'easy'
-                            ? 'Facil'
-                            : recipe.difficulty === 'medium'
-                            ? 'Media'
-                            : 'Dificil'}
-                        </Badge>
-                      )}
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                        {recipe.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                        {recipe.description || 'Sin descripcion'}
-                      </p>
-                      <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                        {recipe.cooking_time && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{recipe.cooking_time} min</span>
-                          </div>
-                        )}
-                        {recipe.servings && (
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
-                            <span>{recipe.servings} porciones</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <RecipeCard key={recipe.id} recipe={recipe} useIconPlaceholder />
               ))}
             </div>
           )}

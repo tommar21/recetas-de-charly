@@ -7,10 +7,12 @@ import {
   Search,
   Bookmark,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Plus
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { RecipeCard } from '@/components/recipes/recipe-card'
+import { getUser } from '@/lib/auth/get-user'
 import type { Category, Recipe } from '@/lib/types'
 
 async function getCategories(): Promise<Category[]> {
@@ -69,10 +71,11 @@ async function getCategoryCounts(): Promise<Record<string, number>> {
 }
 
 export default async function HomePage() {
-  const [categories, featuredRecipes, categoryCounts] = await Promise.all([
+  const [categories, featuredRecipes, categoryCounts, user] = await Promise.all([
     getCategories(),
     getFeaturedRecipes(),
-    getCategoryCounts()
+    getCategoryCounts(),
+    getUser()
   ])
 
   return (
@@ -100,11 +103,20 @@ export default async function HomePage() {
                   Explorar Recetas
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/register">
-                  Crear Cuenta Gratis
-                </Link>
-              </Button>
+              {user ? (
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/recipes/new">
+                    <Plus className="mr-2 h-5 w-5" />
+                    Crear Nueva Receta
+                  </Link>
+                </Button>
+              ) : (
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/register">
+                    Crear Cuenta Gratis
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -217,7 +229,9 @@ export default async function HomePage() {
                 Se el primero en compartir una receta con la comunidad
               </p>
               <Button asChild>
-                <Link href="/register">Crear cuenta y publicar</Link>
+                <Link href={user ? "/recipes/new" : "/register"}>
+                  {user ? "Crear receta" : "Crear cuenta y publicar"}
+                </Link>
               </Button>
             </div>
           ) : (
@@ -230,21 +244,23 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-primary text-primary-foreground">
-        <div className="container mx-auto max-w-7xl px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">
-            Unete a nuestra comunidad
-          </h2>
-          <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-            Crea una cuenta gratuita y comienza a guardar tus recetas favoritas,
-            publicar las tuyas y conectar con otros amantes de la cocina.
-          </p>
-          <Button size="lg" variant="secondary" asChild>
-            <Link href="/register">Crear Cuenta Gratis</Link>
-          </Button>
-        </div>
-      </section>
+      {/* CTA Section - Solo para usuarios no logueados */}
+      {!user && (
+        <section className="py-16 bg-primary text-primary-foreground">
+          <div className="container mx-auto max-w-7xl px-4 text-center">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+              Unete a nuestra comunidad
+            </h2>
+            <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+              Crea una cuenta gratuita y comienza a guardar tus recetas favoritas,
+              publicar las tuyas y conectar con otros amantes de la cocina.
+            </p>
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/register">Crear Cuenta Gratis</Link>
+            </Button>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

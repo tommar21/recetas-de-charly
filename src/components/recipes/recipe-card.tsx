@@ -38,9 +38,20 @@ interface RecipeCardProps {
   useIconPlaceholder?: boolean
   /** Additional class for the card */
   className?: string
+  /** Show tags section (default: false) */
+  showTags?: boolean
+  /** Show author name (default: false) */
+  showAuthor?: boolean
 }
 
-export function RecipeCard({ recipe, actions, useIconPlaceholder = false, className }: RecipeCardProps) {
+export function RecipeCard({
+  recipe,
+  actions,
+  useIconPlaceholder = false,
+  className,
+  showTags = false,
+  showAuthor = false
+}: RecipeCardProps) {
   const difficulty = recipe.difficulty as Difficulty | null
 
   // Get author name from either profiles (join) or profile key
@@ -105,12 +116,7 @@ export function RecipeCard({ recipe, actions, useIconPlaceholder = false, classN
             {recipe.description}
           </p>
         )}
-        {!recipe.description && (
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-            Sin descripcion
-          </p>
-        )}
-        {tags.length > 0 && (
+        {showTags && tags.length > 0 && (
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
             {tags.map((tag) => (
@@ -138,14 +144,12 @@ export function RecipeCard({ recipe, actions, useIconPlaceholder = false, classN
               <span>{recipe.servings}</span>
             </div>
           )}
-          {recipe.likes_count !== undefined && recipe.likes_count > 0 && (
-            <div className="flex items-center gap-1" title="Me gusta">
-              <Heart className="h-4 w-4" aria-hidden="true" />
-              <span>{recipe.likes_count}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1" title="Me gusta">
+            <Heart className="h-4 w-4" aria-hidden="true" />
+            <span>{recipe.likes_count ?? 0}</span>
+          </div>
         </div>
-        {authorName && (
+        {showAuthor && authorName && (
           <p className="text-xs text-muted-foreground mt-2">
             por {authorName}
           </p>

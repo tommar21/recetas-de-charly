@@ -307,7 +307,7 @@ export default function ProfilePage() {
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                  <SheetContent className="w-full sm:max-w-lg overflow-y-auto shadow-2xl">
                     <SheetHeader className="text-left pb-2">
                       <SheetTitle className="text-xl flex items-center gap-2">
                         <User className="h-5 w-5 text-primary" />
@@ -403,7 +403,7 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Submit Button */}
-                        <div className="px-4">
+                        <div className="px-4 pb-6">
                           <Button
                             type="submit"
                             className="w-full h-11 text-base font-medium"

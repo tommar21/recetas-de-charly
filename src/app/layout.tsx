@@ -43,7 +43,7 @@ export default async function RootLayout({
             <div className="relative flex min-h-screen flex-col">
               <Header initialUser={user} />
               <main id="main-content" className="flex-1">{children}</main>
-              <Footer user={user} />
+              <Footer />
             </div>
           </AuthProvider>
         </Providers>

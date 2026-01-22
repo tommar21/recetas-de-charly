@@ -32,7 +32,24 @@ interface BookmarkedRecipe {
     cooking_time: number | null
     servings: number | null
     difficulty: string | null
+    likes_count: number
   }
+}
+
+// Raw type from Supabase query
+interface RawBookmark {
+  id: string
+  recipe: {
+    id: string
+    title: string
+    slug: string
+    description: string | null
+    image_url: string | null
+    cooking_time: number | null
+    servings: number | null
+    difficulty: string | null
+    recipe_likes: { count: number }[]
+  } | null
 }
 
 export default function BookmarksPage() {
@@ -69,7 +86,8 @@ export default function BookmarksPage() {
             image_url,
             cooking_time,
             servings,
-            difficulty
+            difficulty,
+            recipe_likes(count)
           )
         `)
         .eq('user_id', user.id)
@@ -78,7 +96,25 @@ export default function BookmarksPage() {
       if (error) {
         toast.error('Error al cargar los guardados')
       } else {
-        setBookmarks((data || []) as unknown as BookmarkedRecipe[])
+        // Transform data to include likes_count
+        const rawData = (data || []) as unknown as RawBookmark[]
+        const bookmarksWithLikes: BookmarkedRecipe[] = rawData
+          .filter((b): b is RawBookmark & { recipe: NonNullable<RawBookmark['recipe']> } => b.recipe !== null)
+          .map(bookmark => ({
+            id: bookmark.id,
+            recipe: {
+              id: bookmark.recipe.id,
+              title: bookmark.recipe.title,
+              slug: bookmark.recipe.slug,
+              description: bookmark.recipe.description,
+              image_url: bookmark.recipe.image_url,
+              cooking_time: bookmark.recipe.cooking_time,
+              servings: bookmark.recipe.servings,
+              difficulty: bookmark.recipe.difficulty,
+              likes_count: bookmark.recipe.recipe_likes?.[0]?.count || 0
+            }
+          }))
+        setBookmarks(bookmarksWithLikes)
       }
 
       setLoading(false)

@@ -66,12 +66,14 @@ export function RecipeForm({
   // Update categories when initialCategories changes
   useEffect(() => {
     setSelectedCategories(initialCategories)
-  }, [initialCategories])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(initialCategories)])
 
   // Update tags when initialTags changes
   useEffect(() => {
     setSelectedTags(initialTags)
-  }, [initialTags])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(initialTags)])
 
   // Warn before leaving with unsaved changes
   useEffect(() => {

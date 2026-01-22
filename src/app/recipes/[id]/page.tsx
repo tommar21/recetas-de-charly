@@ -21,7 +21,6 @@ import { DIFFICULTY_COLORS, DIFFICULTY_LABELS } from '@/lib/constants'
 
 interface TagInfo {
   name: string
-  color: string | null
 }
 
 interface FormattedRecipe {
@@ -78,7 +77,6 @@ interface RecipeCategoryRow {
 
 interface TagJoin {
   name: string
-  color: string | null
 }
 
 interface RecipeTagRow {
@@ -90,8 +88,11 @@ async function getRecipeById(id: string): Promise<FormattedRecipe | null> {
   const supabase = await createClient()
   if (!supabase) return null
 
+  // Get current user to allow viewing own recipes
+  const { data: { user } } = await supabase.auth.getUser()
+
   // Single query with all JOINs - optimized from 4 queries to 1
-  const { data: recipe, error } = await supabase
+  let query = supabase
     .from('recipes')
     .select(`
       *,
@@ -119,14 +120,21 @@ async function getRecipeById(id: string): Promise<FormattedRecipe | null> {
       ),
       recipe_tags (
         tags (
-          name,
-          color
+          name
         )
       )
     `)
     .eq('id', id)
-    .eq('is_public', true)
-    .single()
+
+  // If user is logged in, show public recipes OR their own
+  // If not logged in, show only public recipes
+  if (user) {
+    query = query.or(`is_public.eq.true,user_id.eq.${user.id}`)
+  } else {
+    query = query.eq('is_public', true)
+  }
+
+  const { data: recipe, error } = await query.single()
 
   if (error || !recipe) return null
 
@@ -377,8 +385,7 @@ export default async function RecipeDetailPage({
                       <Badge
                         key={tag.name}
                         variant="outline"
-                        style={tag.color ? { borderColor: tag.color, color: tag.color } : undefined}
-                      >
+                                              >
                         {tag.name}
                       </Badge>
                     ))}

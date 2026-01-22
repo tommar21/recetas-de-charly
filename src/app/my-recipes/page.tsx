@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -25,10 +23,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Clock, Users, Plus, MoreVertical, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Plus, MoreVertical, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { DIFFICULTY_COLORS, DIFFICULTY_LABELS, type Difficulty } from '@/lib/constants'
+import { RecipeCard } from '@/components/recipes/recipe-card'
 
 interface Recipe {
   id: string
@@ -40,6 +38,21 @@ interface Recipe {
   servings: number | null
   difficulty: string | null
   created_at: string
+  likes_count: number
+}
+
+// Raw type from Supabase query
+interface RawRecipe {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  image_url: string | null
+  cooking_time: number | null
+  servings: number | null
+  difficulty: string | null
+  created_at: string
+  recipe_likes: { count: number }[]
 }
 
 export default function MyRecipesPage() {
@@ -66,14 +79,29 @@ export default function MyRecipesPage() {
 
     const { data: recipesData, error } = await supabase
       .from('recipes')
-      .select('id, title, slug, description, image_url, cooking_time, servings, difficulty, created_at')
+      .select('id, title, slug, description, image_url, cooking_time, servings, difficulty, created_at, recipe_likes(count)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
+
+    // Transform the data to include likes_count
+    const rawRecipes = (recipesData || []) as unknown as RawRecipe[]
+    const recipesWithLikes: Recipe[] = rawRecipes.map(recipe => ({
+      id: recipe.id,
+      title: recipe.title,
+      slug: recipe.slug,
+      description: recipe.description,
+      image_url: recipe.image_url,
+      cooking_time: recipe.cooking_time,
+      servings: recipe.servings,
+      difficulty: recipe.difficulty,
+      created_at: recipe.created_at,
+      likes_count: recipe.recipe_likes?.[0]?.count || 0
+    }))
 
     if (error) {
       toast.error('Error al cargar tus recetas')
     } else {
-      setRecipes(recipesData || [])
+      setRecipes(recipesWithLikes)
     }
 
     setLoading(false)
@@ -108,7 +136,7 @@ export default function MyRecipesPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto max-w-5xl px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <Skeleton className="h-9 w-40" />
           <Skeleton className="h-9 w-32" />
@@ -130,7 +158,7 @@ export default function MyRecipesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Mis Recetas</h1>
         <Button asChild>
@@ -143,96 +171,42 @@ export default function MyRecipesPage() {
 
       {recipes.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recipes.map((recipe) => {
-            const difficulty = recipe.difficulty as Difficulty | null
-
-            return (
-              <Card key={recipe.id} className="group overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="relative">
-                  <Link href={`/recipes/${recipe.id}`}>
-                    <div className="relative aspect-4/3 overflow-hidden">
-                      {recipe.image_url ? (
-                        <Image
-                          src={recipe.image_url}
-                          alt={recipe.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          className="object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <span className="text-4xl">🍽️</span>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                  {difficulty && (
-                    <Badge
-                      className={`absolute top-2 left-2 ${DIFFICULTY_COLORS[difficulty]}`}
+          {recipes.map((recipe) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              actions={
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
                       variant="secondary"
+                      size="icon"
+                      className="h-8 w-8 opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm"
+                      aria-label="Opciones de receta"
                     >
-                      {DIFFICULTY_LABELS[difficulty]}
-                    </Badge>
-                  )}
-                  {/* Actions dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm"
-                        aria-label="Opciones de receta"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/recipes/${recipe.id}/edit`}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Editar
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteId(recipe.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <CardContent className="p-4">
-                  <Link href={`/recipes/${recipe.id}`}>
-                    <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                      {recipe.title}
-                    </h3>
-                  </Link>
-                  {recipe.description && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {recipe.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                    {recipe.cooking_time && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{recipe.cooking_time} min</span>
-                      </div>
-                    )}
-                    {recipe.servings && (
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{recipe.servings}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/recipes/${recipe.id}/edit`}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setDeleteId(recipe.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              }
+            />
+          ))}
         </div>
       ) : (
         <Card>

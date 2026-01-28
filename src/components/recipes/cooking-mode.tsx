@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { ChefHat, Check, RotateCcw } from 'lucide-react'
+import { ChefHat, Check, RotateCcw, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface CookingModeProps {
@@ -12,6 +12,14 @@ interface CookingModeProps {
 export function CookingMode({ instructions }: CookingModeProps) {
   const [isActive, setIsActive] = useState(false)
   const [completed, setCompleted] = useState<Set<number>>(new Set())
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to cooking mode when activated
+  useEffect(() => {
+    if (isActive && containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [isActive])
 
   const toggleStep = (index: number) => {
     setCompleted(prev => {
@@ -47,8 +55,11 @@ export function CookingMode({ instructions }: CookingModeProps) {
   }
 
   return (
-    <div className="border rounded-lg p-4 bg-background">
-      <div className="flex items-center justify-between mb-4">
+    <div
+      ref={containerRef}
+      className="border rounded-lg p-4 landscape:p-3 bg-background scroll-mt-20"
+    >
+      <div className="flex items-center justify-between mb-4 landscape:mb-2">
         <div className="flex items-center gap-2">
           <ChefHat className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">Modo Cocina</h3>
@@ -59,21 +70,23 @@ export function CookingMode({ instructions }: CookingModeProps) {
             size="sm"
             onClick={resetProgress}
             disabled={completed.size === 0}
+            title="Reiniciar progreso"
           >
             <RotateCcw className="h-4 w-4" />
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setIsActive(false)}
           >
+            <X className="h-4 w-4 mr-1" />
             Cerrar
           </Button>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="mb-4">
+      <div className="mb-4 landscape:mb-2">
         <div className="flex items-center justify-between text-sm mb-1">
           <span className="text-muted-foreground">Progreso</span>
           <span className="font-medium">{completed.size}/{instructions.length}</span>
@@ -87,13 +100,13 @@ export function CookingMode({ instructions }: CookingModeProps) {
       </div>
 
       {/* Instructions checklist */}
-      <ol className="space-y-3">
+      <ol className="space-y-3 landscape:space-y-2">
         {instructions.map((step, index) => (
           <li
             key={index}
             onClick={() => toggleStep(index)}
             className={cn(
-              'flex gap-3 p-3 rounded-lg cursor-pointer transition-all',
+              'flex gap-3 p-3 landscape:p-2 rounded-lg cursor-pointer transition-all',
               completed.has(index)
                 ? 'bg-green-50 dark:bg-green-950/20'
                 : 'bg-muted/50 hover:bg-muted'

@@ -90,19 +90,19 @@ export default function RegisterPage() {
 
   return (
     <Card>
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
+      <CardHeader className="text-center landscape:py-3">
+        <div className="flex justify-center mb-4 landscape:hidden">
           <div className="p-3 rounded-full bg-primary/10">
             <ChefHat className="h-8 w-8 text-primary" />
           </div>
         </div>
-        <CardTitle className="text-2xl">Crear cuenta</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-2xl landscape:text-xl">Crear cuenta</CardTitle>
+        <CardDescription className="landscape:text-xs">
           Unete a nuestra comunidad de amantes de la cocina
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleRegister} className="space-y-4">
+      <CardContent className="landscape:py-2">
+        <form onSubmit={handleRegister} className="space-y-4 landscape:space-y-2">
           <div className="space-y-2">
             <Label htmlFor="name">Nombre</Label>
             <div className="relative">
@@ -191,7 +191,7 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <div className="relative my-6">
+        <div className="relative my-6 landscape:my-3">
           <Separator />
           <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
             o continua con
